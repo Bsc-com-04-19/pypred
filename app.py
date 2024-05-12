@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense
+from sklearn.metrics import r2_score
 from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import StandardScaler  # Import StandardScaler
 import datetime
@@ -139,19 +140,28 @@ if forecast_button:
     mse = model.evaluate(X_test, y_test)
     st.write(f'Mean Squared Error: {mse}')
 
+    # Calculate R2 score
+    y_pred = model.predict(X_test)
+    r2 = r2_score(y_test, y_pred)
+    st.write(f'R2 Score: {r2}')
+
     # Forecasting for multiple days
     forecast_prices_normalized = model.predict(X_test)
     # Inverse transform using the same scaler object
     forecast_prices = scaler.inverse_transform(forecast_prices_normalized)
 
+    # Display the predicted prices in a table
+    st.write("Predicted Prices:")
+    predicted_prices_df = pd.DataFrame(forecast_prices, columns=["Price"])
+    st.write(predicted_prices_df)
+
     # Plot historical and forecasted prices using a line plot
     fig, ax = plt.subplots()
-    ax.plot(filtered_data.index[-len(y_test):], filtered_data['price'].values[-len(y_test):], label='Historical Prices', marker='o')
+    # ax.plot(filtered_data.index[-len(y_test):], filtered_data['price'].values[-len(y_test):], label='Historical Prices', marker='o')
     ax.plot(filtered_data.index[-len(y_test):], forecast_prices, label='Forecasted Prices', marker='o')
     ax.set_xlabel('Date')
     ax.set_ylabel('Price')
     ax.set_title('Historical and Forecasted Prices')
     ax.legend()
-    
-    st.write(fig)
+
     st.pyplot(fig)
