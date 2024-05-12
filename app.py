@@ -19,19 +19,19 @@ option = st.sidebar.selectbox('Select Crop', ['Maize (new harvest)', 'Beans'])
 start_date = st.sidebar.date_input('Start Date', value=datetime.date.today() - datetime.timedelta(days=365))
 end_date = st.sidebar.date_input('End Date', datetime.date.today())
 num_days_forecast = st.sidebar.number_input('Number of days to forecast', value=7, min_value=1, max_value=365, step=1)
-selected_district = st.sidebar.selectbox('Select District', ['Dedza', 'Mzimba', 'Blantyre', 'Ntcheu'])
+selected_district = st.sidebar.selectbox('Select District', ['Dedza', 'Mzimba', 'Blantyre', 'Ntcheu', 'Dowa'])
 
 # Filter markets based on selected district
 if selected_district == 'Dedza':
-    markets = ['Nsikawanjala']
+    markets = ['Nsikawanjala', 'Ntakataka']
 elif selected_district == 'Mzimba':
     markets = ['Jenda']
 elif selected_district == 'Blantyre':
     markets = ['Lunzu']
 elif selected_district == 'Ntcheu':
-    markets = ['Lizulu']
+    markets = ['Chimbiya', 'Golomoti', 'Ntcheu Boma']
 elif selected_district == 'Dowa':
-    markets = ['Nsungwi']  # Add the markets for Ntcheu here
+    markets = ['Nsungwi','Mponela']  # Add the markets for Ntcheu here
 
 selected_market = st.sidebar.selectbox('Select Market', markets)
 forecast_button = st.sidebar.button('Predict')
@@ -94,12 +94,11 @@ if forecast_button:
     filtered_data = filtered_df[filtered_df['commodity'] == option]
 
     # Prepare the data for LSTM
-    def prepare_data_for_lstm(data):
+    def prepare_data_for_lstm(data, scaler):
         # Convert price column to array
         prices = data['price'].values
 
-        # Normalize prices
-        scaler = StandardScaler()
+        # Normalize prices using the provided scaler
         prices_normalized = scaler.fit_transform(prices.reshape(-1, 1))
 
         # Create sequences and corresponding targets
@@ -110,10 +109,13 @@ if forecast_button:
             sequences.append(prices_normalized[i:i+seq_length])
             targets.append(prices_normalized[i+seq_length])
 
-        return np.array(sequences), np.array(targets)
+        return np.array(sequences), np.array(targets), scaler
+
+    # Create a scaler object
+    scaler = StandardScaler()
 
     # Prepare data for LSTM
-    X, y = prepare_data_for_lstm(filtered_data)
+    X, y, scaler = prepare_data_for_lstm(filtered_data, scaler)
 
     # Split data into training and testing sets
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -139,6 +141,7 @@ if forecast_button:
 
     # Forecasting for multiple days
     forecast_prices_normalized = model.predict(X_test)
+    # Inverse transform using the same scaler object
     forecast_prices = scaler.inverse_transform(forecast_prices_normalized)
 
     # Plot historical and forecasted prices using a line plot
@@ -149,5 +152,6 @@ if forecast_button:
     ax.set_ylabel('Price')
     ax.set_title('Historical and Forecasted Prices')
     ax.legend()
-
+    
+    st.write(fig)
     st.pyplot(fig)
